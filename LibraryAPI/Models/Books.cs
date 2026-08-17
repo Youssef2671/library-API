@@ -11,5 +11,6 @@
 
         // Navigation Property: عشان نقدر نوصل لبيانات المؤلف من الكتاب
         public Author Author { get; set; }
+        public DateTime PublishDate { get; set; }
     }
 }

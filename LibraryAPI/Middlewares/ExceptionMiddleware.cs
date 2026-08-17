@@ -9,12 +9,14 @@ namespace LibraryAPI.Middlewares
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<ExceptionMiddleware> _logger;
+        private readonly IWebHostEnvironment _env;
 
         // الـ RequestDelegate ده اللي بينقل الطلب للمحطة اللي بعدها في السيرفر
-        public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
+        public ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger , IWebHostEnvironment env)
         {
             _next = next;
             _logger = logger;
+            _env = env;
         }
 
         public async Task InvokeAsync(HttpContext context)
@@ -26,22 +28,22 @@ namespace LibraryAPI.Middlewares
             }
             catch (Exception ex)
             {
-                // 1. تسجيل الخطأ الحقيقي للمطورين
-                _logger.LogError(ex, ex.Message);
-
-                // 2. إرجاع رسالة شيك لليوزر
                 context.Response.ContentType = "application/json";
                 context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 
-                var response = new
+                // لو إحنا في مرحلة التطوير، اظهر الخطأ الحقيقي، غير كده اظهر الرسالة العامة
+                object response;
+                if (_env.IsDevelopment())
                 {
-                    StatusCode = context.Response.StatusCode,
-                    Message = "حدث خطأ داخلي في الخادم، يرجى المحاولة لاحقاً."
-                };
+                    response = (new { StatusCode = context.Response.StatusCode, Message = ex.Message, Details = ex.StackTrace });
+                }
+                else
+                {
+                    response = (new { StatusCode = context.Response.StatusCode, Message = "حدث خطأ داخلي في الخادم، يرجى المحاولة لاحقاً." });
+                }
 
-                // تحويل الرد لـ JSON وبعته
-                var jsonResponse = JsonSerializer.Serialize(response);
-                await context.Response.WriteAsync(jsonResponse);
+                var json = JsonSerializer.Serialize(response);
+                await context.Response.WriteAsync(json);
             }
         }
     }

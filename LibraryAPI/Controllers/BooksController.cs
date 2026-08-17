@@ -4,6 +4,7 @@ using LibraryAPI.Models;
 using LibraryAPI.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq.Expressions;
 
 namespace LibraryAPI.Controllers
 {
@@ -24,17 +25,38 @@ namespace LibraryAPI.Controllers
         }
 
         // 1. عرض كل الكتب
+
+
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<BookDTO>>> GetBooks()
+        public async Task<ActionResult<PagedResultDTO<BookDTO>>> GetBooks([FromQuery] BookQueryParameters parameters)
         {
-            // هنا بنمرر جدول المؤلف عشان ييجي مع الكتاب
-            var books = await _bookRepository.GetAllAsync(b => b.Author);
+            Expression<Func<Book, bool>>? filter = string.IsNullOrWhiteSpace(parameters.SearchTerm)
+                ? null
+                : b => b.Title.Contains(parameters.SearchTerm);
 
-            // الـ AutoMapper هيقوم بدوره عادي جداً ويحول الداتا
-            var booksDto = _mapper.Map<IEnumerable<BookDTO>>(books);
+            Func<IQueryable<Book>, IOrderedQueryable<Book>>? orderBy = parameters.OrderBy?.ToLower() switch
+            {
+                "title" => q => q.OrderBy(b => b.Title),
+                "datedesc" => q => q.OrderByDescending(b => b.PublishDate),
+                _ => q => q.OrderBy(b => b.Id)
+            };
 
-            return Ok(booksDto);
+            // النتيجة هنا هترجع PagedResult<Book>
+            var pagedBooks = await _bookRepository.GetAllAsync(filter, orderBy, parameters.PageNumber, parameters.PageSize);
+
+            // هنغلفها ونعمل Map للكتب لـ BookDTO
+            var result = new PagedResultDTO<BookDTO>
+            {
+                TotalItems = pagedBooks.TotalItems,
+                TotalPages = pagedBooks.TotalPages,
+                CurrentPage = pagedBooks.CurrentPage,
+                PageSize = pagedBooks.PageSize,
+                Items = _mapper.Map<IEnumerable<BookDTO>>(pagedBooks.Items)
+            };
+
+            return Ok(result);
         }
+
 
         // 2. إضافة كتاب جديد مع رفع صورة
         [Authorize]
@@ -50,7 +72,12 @@ namespace LibraryAPI.Controllers
                 // تحديد مسار حفظ الصورة في فولدر wwwroot/images
                 var fileName = Guid.NewGuid().ToString() + Path.GetExtension(bookCreateDto.ImageFile.FileName);
                 var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", fileName);
-
+                var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images");
+                if (!Directory.Exists(uploadsFolder))
+                {
+                    Directory.CreateDirectory(uploadsFolder);
+                }
+                // ثم تكمل كود إنشاء مسار الصورة وحفظها (FileStream)
                 using (var stream = new FileStream(filePath, FileMode.Create))
                 {
                     await bookCreateDto.ImageFile.CopyToAsync(stream);

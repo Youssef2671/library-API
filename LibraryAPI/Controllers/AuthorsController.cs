@@ -22,12 +22,16 @@ namespace LibraryAPI.Controllers
             _mapper = mapper;
         }
 
-        // 1. عرض كل المؤلفين
+
         [HttpGet]
         public async Task<ActionResult<IEnumerable<AuthorDTO>>> GetAuthors()
         {
-            var authors = await _repository.GetAllAsync();
-            var authorsDto = _mapper.Map<IEnumerable<AuthorDTO>>(authors);
+            // الدالة هنا هترجع PagedResult<Author> لأننا مبعتناش بارامترز الفلترة فجابهم كلهم
+            var pagedAuthors = await _repository.GetAllAsync();
+
+            // السطر السحري: هناخد الـ Items (اللي هي مصفوفة المؤلفين الفعلية) ونعملها Map
+            var authorsDto = _mapper.Map<IEnumerable<AuthorDTO>>(pagedAuthors.Items);
+
             return Ok(authorsDto);
         }
 
