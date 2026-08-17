@@ -99,8 +99,20 @@ namespace LibraryAPI.Repositories
 
         public async Task DeleteAsync(T entity)
         {
-            // Remove مش بتحتاج Async، بس بنعمل Await للـ SaveChanges
-            _context.Set<T>().Remove(entity);
+            // لو الكلاس بيدعم الـ Soft Delete، غير حالته
+            if (entity is ISoftDelete softDeleteEntity)
+            {
+                softDeleteEntity.IsDeleted = true;
+                _context.Set<T>().Update(entity);
+            }
+            else
+            {
+                // لو كلاس عادي مش بيدعمه، امسحه نهائي (Hard Delete)
+                _context.Set<T>().Remove(entity);
+            }
+
+            // حفظ التعديلات 
+            // ملاحظة: لو كنت عامل دالة SaveAsync منفصلة، يبقى امسح السطر ده واستدعيها من الكنترولر زي ما إنت متعود
             await _context.SaveChangesAsync();
         }
 
