@@ -1,4 +1,5 @@
 ﻿using FluentValidation;
+using FluentValidation.AspNetCore;
 using LibraryAPI.Data;
 using LibraryAPI.Middlewares;
 using LibraryAPI.Repositories;
@@ -25,11 +26,12 @@ builder.Services.AddDbContext<BooksContext>(options =>
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 builder.Services.AddAutoMapper(typeof(Program));
 builder.Services.AddValidatorsFromAssemblyContaining<BookCreateDTOValidator>();
+builder.Services.AddFluentValidationAutoValidation();
 
 
 // قراءة الإعدادات من ملف appsettings
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-var key = Encoding.ASCII.GetBytes(jwtSettings["Key"]);
+var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]);
 
 builder.Services.AddAuthentication(options =>
 {
@@ -75,8 +77,6 @@ app.UseRouting();
 // ضيف السطر ده هنا بالظبط
 app.UseCors("AllowAll");
 
-app.UseAuthentication();
-app.UseAuthorization();
 app.UseAuthentication();
 app.UseAuthorization();
 
