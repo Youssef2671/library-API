@@ -1,0 +1,15 @@
+# Configuration and Secrets
+appsettings.json
+appsettings.Development.json
+appsettings.Production.json
+appsettings.*.json
+*.env
+*.env.*
+*.user
+
+# Build and Output Folders
+bin/
+obj/
+.vs/
+.idea/
+*.userprefs
